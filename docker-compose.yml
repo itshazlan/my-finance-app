@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: finance-db
+    restart: always
+    environment:
+      POSTGRES_USER: user_finance
+      POSTGRES_PASSWORD: 12345678
+      POSTGRES_DB: finance_tracker
+    ports:
+      - '5432:5432'
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:

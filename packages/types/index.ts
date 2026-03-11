@@ -1,0 +1,1 @@
+export * from '../../apps/api/node_modules/@prisma/client';

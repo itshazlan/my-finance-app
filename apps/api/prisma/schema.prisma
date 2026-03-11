@@ -1,0 +1,63 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relasi
+  transactions Transaction[]
+  categories   Category[]
+}
+
+model Category {
+  id     String          @id @default(uuid())
+  name   String
+  type   TransactionType
+  userId String
+  user   User            @relation(fields: [userId], references: [id])
+
+  // Relasi ke transaksi
+  transactions Transaction[]
+
+  @@unique([name, userId]) // User tidak boleh punya kategori dengan nama yang sama
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  amount      Float
+  type        TransactionType
+  description String?
+  date        DateTime        @default(now())
+
+  // Foreign Keys
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
