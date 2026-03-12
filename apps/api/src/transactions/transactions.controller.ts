@@ -10,14 +10,28 @@ export class TransactionsController {
     @UseGuards(AuthGuard)
     @Post()
     async create(@Body() createTransactionDto: CreateTransactionDto, @Request() req: any) {
-        const userId = req.user.id;
-        return this.transactionsService.create({ ...createTransactionDto, userId });
+        const userId = req.user.sub || req.user.id;
+        return this.transactionsService.create(createTransactionDto, userId);
+    }
+
+    @UseGuards(AuthGuard)
+    @Get('summary')
+    async getSummary(@Request() req: any) {
+        const userId = req.user.sub || req.user.id;
+        return this.transactionsService.getSummary(userId);
+    }
+
+    @UseGuards(AuthGuard)
+    @Get('weekly')
+    async getWeeklyReport(@Request() req: any) {
+        const userId = req.user.sub || req.user.id;
+        return this.transactionsService.getWeeklyReport(userId);
     }
 
     @UseGuards(AuthGuard)
     @Get()
     async findAll(@Request() req: any) {
-        const userId = req.user.sub;
+        const userId = req.user.sub || req.user.id;
         return this.transactionsService.findAll(userId);
     }
 }

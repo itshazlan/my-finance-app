@@ -1,106 +1,106 @@
 "use client";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import type { Transaction } from "@repo/types";
+import { API_URL } from "@/lib/api";
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const loadTransactions = async () => {
-    try {
-      const res = await fetch("http://localhost:4000/api/transactions", {
-        headers: {},
-        credentials: "include", // Kirim HttpOnly cookie
+  const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
+    queryKey: ["transactions"],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/transactions`, {
+        credentials: "include",
       });
-      if (res.ok) {
-        const data = await res.json();
-        setTransactions(data);
-      } else {
-        localStorage.removeItem("token");
-        document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        router.push("/login");
+      if (!res.ok) {
+        if (res.status === 401) {
+          document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          router.push("/login");
+        }
+        throw new Error("Failed to fetch transactions");
       }
-    } catch (err) {
-      console.error("Fetch error:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadTransactions();
-  }, []);
+      return res.json();
+    },
+  });
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Riwayat Transaksi</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Lihat daftar semua transaksi yang telah kamu catat.
+    <div className="page-container">
+      {/* Header */}
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.5px" }}>
+          Riwayat Transaksi
+        </h1>
+        <p style={{ color: "#64748b", fontSize: 14, marginTop: 6 }}>
+          Lihat dan pantau semua transaksi yang telah kamu catat.
         </p>
       </div>
 
+      {/* Table */}
       {isLoading ? (
-        <p className="text-center text-gray-400 py-10">Memuat transaksi...</p>
+        <div style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8", fontSize: 14 }}>
+          Memuat transaksi...
+        </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tanggal
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Keterangan
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Kategori
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Jumlah
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {transactions.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-gray-400">
-                    Belum ada riwayat transaksi.
-                  </td>
-                </tr>
-              )}
-              {transactions.map((t: any) => (
-                <tr key={t.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(t.date).toLocaleDateString("id-ID", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {t.description || "Tanpa Deskripsi"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs px-2 py-1 font-semibold">
-                      {t.category?.name || "Umum"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold">
-                    <span
-                      className={
-                        t.type === "EXPENSE" ? "text-red-500" : "text-emerald-500"
-                      }
-                    >
-                      {t.type === "EXPENSE" ? "-" : "+"} Rp{" "}
-                      {t.amount.toLocaleString("id-ID")}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+          {/* Table Header */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1.5fr 2fr 1.5fr 1.5fr",
+            background: "#f8fafc",
+            borderBottom: "1px solid #e2e8f0",
+            padding: "12px 24px",
+          }}>
+            {["Tanggal", "Keterangan", "Kategori", "Jumlah"].map((h, i) => (
+              <span key={h} style={{
+                fontSize: 11, fontWeight: 700, color: "#94a3b8",
+                textTransform: "uppercase", letterSpacing: "0.06em",
+                textAlign: i === 3 ? "right" : "left"
+              }}>{h}</span>
+            ))}
+          </div>
+
+          {/* Empty State */}
+          {transactions.length === 0 ? (
+            <div className="empty-state">
+              <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line>
+                </svg>
+              </div>
+              <p style={{ fontWeight: 600, color: "#475569", marginBottom: 4 }}>Belum ada transaksi</p>
+              <p style={{ fontSize: 14, color: "#94a3b8" }}>Catat transaksi pertamamu di halaman Dasbor.</p>
+            </div>
+          ) : (
+            transactions.map((t: Transaction, idx: number) => (
+              <div key={t.id} style={{
+                display: "grid",
+                gridTemplateColumns: "1.5fr 2fr 1.5fr 1.5fr",
+                padding: "16px 24px",
+                borderBottom: idx < transactions.length - 1 ? "1px solid #f1f5f9" : "none",
+                alignItems: "center",
+                transition: "background 0.12s",
+              }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#fafafa")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+              >
+                <span style={{ fontSize: 13, color: "#64748b" }}>
+                  {new Date(t.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
+                  {t.description || "Tanpa Deskripsi"}
+                </span>
+                <span>
+                  <span className={`badge ${t.type === "EXPENSE" ? "badge-expense" : "badge-income"}`}>
+                    {t.category?.name || "Umum"}
+                  </span>
+                </span>
+                <span style={{ textAlign: "right", fontWeight: 700, fontSize: 14, color: t.type === "EXPENSE" ? "#f43f5e" : "#10b981" }}>
+                  {t.type === "EXPENSE" ? "−" : "+"} Rp {t.amount.toLocaleString("id-ID")}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
