@@ -40,14 +40,12 @@ export default function LoginPage() {
     <div style={{ display: "flex", minHeight: "100vh", background: "#fff" }}>
       {/* Left decorative panel */}
       <div style={{
-        display: "none",
         width: "50%",
         background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)",
         alignItems: "center",
         justifyContent: "center",
         position: "relative",
         overflow: "hidden",
-        ...(typeof window !== "undefined" && window.innerWidth >= 1024 ? { display: "flex" } : {}),
       }}
         className="auth-left-panel"
       >
