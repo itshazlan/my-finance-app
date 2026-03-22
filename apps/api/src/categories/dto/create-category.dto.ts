@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { TransactionType } from '@prisma/client';
+import { TransactionType } from '../../generated/prisma/client.js';
 
 export class CreateCategoryDto {
   @IsString()
