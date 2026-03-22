@@ -23,5 +23,34 @@ services:
           cpus: '0.5'
           memory: 512M
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: finance-api
+    restart: always
+    ports:
+      - '3000:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-user_finance}:${DB_PASSWORD:-password_aman}@db:5432/${DB_NAME:-finance_tracker}?schema=public
+      - JWT_SECRET=${JWT_SECRET:-super-secret-key}
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: finance-web
+    restart: always
+    ports:
+      - '3456:3456'
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+
 volumes:
   db_data:
