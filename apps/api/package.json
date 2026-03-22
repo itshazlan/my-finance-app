@@ -6,6 +6,10 @@
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
+  "files": [
+    "dist",
+    "src/generated"
+  ],
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
