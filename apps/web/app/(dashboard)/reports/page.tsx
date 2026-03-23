@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { Transaction, TransactionSummary } from "@repo/types";
@@ -52,14 +53,16 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function ReportsPage() {
   const router = useRouter();
+  const [month, setMonth] = useState((new Date().getMonth() + 1).toString());
+  const [year, setYear] = useState(new Date().getFullYear().toString());
 
   const {
     data: summary = { INCOME: 0, EXPENSE: 0, BALANCE: 0 },
     isLoading: isLoadingSummary,
   } = useQuery<TransactionSummary>({
-    queryKey: ["summary"],
+    queryKey: ["summary", month, year],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/transactions/summary`, {
+      const res = await fetch(`${API_URL}/transactions/summary?month=${month}&year=${year}`, {
         credentials: "include",
       });
       if (!res.ok) {
@@ -73,9 +76,9 @@ export default function ReportsPage() {
   const { data: weeklyData = [], isLoading: isLoadingWeekly } = useQuery<
     WeeklyData[]
   >({
-    queryKey: ["weekly"],
+    queryKey: ["weekly", month, year],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/transactions/weekly`, {
+      const res = await fetch(`${API_URL}/transactions/weekly?month=${month}&year=${year}`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Gagal mengambil data mingguan");
@@ -91,11 +94,12 @@ export default function ReportsPage() {
   const handleExportExcel = async () => {
     try {
       // 1. Ambil semua transaksi
-      const res = await fetch(`${API_URL}/transactions`, {
+      const res = await fetch(`${API_URL}/transactions?limit=10000&month=${month}&year=${year}`, { // Get large amount for export
         credentials: "include",
       });
       if (!res.ok) throw new Error("Gagal memuat transaksi");
-      const transactionsData: Transaction[] = await res.json();
+      const json = await res.json();
+      const transactionsData: Transaction[] = json.data || [];
 
       if (transactionsData.length === 0) {
         Swal.fire({ icon: 'info', title: 'Data Kosong', text: 'Tidak ada data transaksi untuk diekspor.' });
@@ -141,42 +145,73 @@ export default function ReportsPage() {
   return (
     <div className="page-container">
       {/* Header */}
-      <div style={{ marginBottom: 32 }}>
-        <h1
-          style={{
-            fontSize: 28,
-            fontWeight: 800,
-            color: "#0f172a",
-            letterSpacing: "-0.5px",
-          }}
-        >
-          Laporan Keuangan
-        </h1>
-        <p style={{ color: "#64748b", fontSize: 14, marginTop: 6 }}>
-          Analisis arus kas dan tren keuangan Anda secara komprehensif.
-        </p>
+      <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+        <div>
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 800,
+              color: "#0f172a",
+              letterSpacing: "-0.5px",
+            }}
+          >
+            Laporan Keuangan
+          </h1>
+          <p style={{ color: "#64748b", fontSize: 14, marginTop: 6 }}>
+            Analisis arus kas dan tren keuangan Anda secara komprehensif.
+          </p>
 
-        <button 
-          onClick={handleExportExcel}
-          style={{
-             marginTop: 16,
-             background: "#10b981", 
-             color: "white", 
-             border: "none", 
-             padding: "8px 16px",
-             fontSize: 14,
-             fontWeight: 600,
-             borderRadius: 8,
-             cursor: "pointer",
-             display: "flex",
-             alignItems: "center",
-             gap: 8,
-             boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)"
-          }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-          Export Transaksi (Excel / CSV)
-        </button>
+          <button 
+            onClick={handleExportExcel}
+            style={{
+               marginTop: 16,
+               background: "#10b981", 
+               color: "white", 
+               border: "none", 
+               padding: "8px 16px",
+               fontSize: 14,
+               fontWeight: 600,
+               borderRadius: 8,
+               cursor: "pointer",
+               display: "flex",
+               alignItems: "center",
+               gap: 8,
+               boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)"
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Export Excel
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <select 
+            value={month} 
+            onChange={e => setMonth(e.target.value)} 
+            className="form-input" 
+            style={{ width: "140px" }}
+          >
+            {[
+              "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+              "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+            ].map((m, i) => (
+              <option key={m} value={(i + 1).toString()}>{m}</option>
+            ))}
+          </select>
+
+          <select 
+            value={year} 
+            onChange={e => setYear(e.target.value)} 
+            className="form-input" 
+            style={{ width: "100px" }}
+          >
+            {Array.from({ length: 5 }).map((_, i) => {
+              const y = new Date().getFullYear() - i;
+              return <option key={y} value={y.toString()}>{y}</option>;
+            })}
+          </select>
+        </div>
       </div>
 
       {isLoading ? (

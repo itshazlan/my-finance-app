@@ -93,7 +93,7 @@ export default function CategoriesPage() {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 24, alignItems: "start" }}>
+      <div className="categories-layout">
 
         {/* ---- Form Panel ---- */}
         <div className="card">
@@ -150,7 +150,8 @@ export default function CategoriesPage() {
         </div>
 
         {/* ---- Table Panel ---- */}
-        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+        <div className="table-responsive-wrapper">
+         <div className="table-min-width">
           {/* Table Header */}
           <div style={{
             display: "grid", gridTemplateColumns: "2fr 1.2fr auto",
@@ -210,6 +211,7 @@ export default function CategoriesPage() {
               </div>
             ))
           )}
+         </div>
         </div>
       </div>
     </div>

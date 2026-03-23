@@ -218,7 +218,8 @@ export default function DashboardPage() {
         }
         throw new Error("Failed to fetch transactions");
       }
-      return res.json();
+      const json = await res.json();
+      return json.data || [];
     },
   });
 
@@ -320,7 +321,7 @@ export default function DashboardPage() {
           ) : (
             transactions.map((t: Transaction) => (
               <div key={t.id} className="transaction-item">
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div className="transaction-item-left">
                   <div className={`icon-circle ${t.type === "EXPENSE" ? "icon-circle-expense" : "icon-circle-income"}`}>
                     {t.type === "EXPENSE" ? (
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
@@ -328,18 +329,20 @@ export default function DashboardPage() {
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
                     )}
                   </div>
-                  <div>
-                    <p style={{ fontWeight: 600, fontSize: 15, color: "#0f172a" }}>{t.description || "Tanpa Deskripsi"}</p>
+                  <div className="transaction-item-text">
+                    <p className="transaction-item-desc">
+                      {t.description || "Tanpa Deskripsi"}
+                    </p>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                       <span className={`badge ${t.type === "EXPENSE" ? "badge-expense" : "badge-income"}`}>{t.category?.name || "Umum"}</span>
-                      <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#cbd5e1" }}></span>
-                      <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>
+                      <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#cbd5e1", flexShrink: 0 }}></span>
+                      <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500, flexShrink: 0 }}>
                         {new Date(t.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
                       </span>
                     </div>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <div className="transaction-item-right">
                   <p style={{ fontWeight: 800, fontSize: 16, color: t.type === "EXPENSE" ? "#f43f5e" : "#10b981", letterSpacing: "-0.3px", margin: 0 }}>
                     {t.type === "EXPENSE" ? "−" : "+"} Rp {t.amount.toLocaleString("id-ID")}
                   </p>
