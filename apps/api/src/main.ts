@@ -13,7 +13,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:3456'],
+    origin: ['http://localhost:3000', 'http://localhost:3456', 'https://my-finance-app-web.vercel.app'],
     credentials: true,
   });
 
