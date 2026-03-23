@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Get, Post, Delete, Param, UseGuards, Request } from '@nestjs/common';
 import { TransactionsService } from './transactions.service.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { AuthGuard } from '../auth/auth.guard.js';
@@ -33,5 +33,12 @@ export class TransactionsController {
     async findAll(@Request() req: any) {
         const userId = req.user.sub || req.user.id;
         return this.transactionsService.findAll(userId);
+    }
+
+    @UseGuards(AuthGuard)
+    @Delete(':id')
+    async remove(@Param('id') id: string, @Request() req: any) {
+        const userId = req.user.sub || req.user.id;
+        return this.transactionsService.remove(id, userId);
     }
 }

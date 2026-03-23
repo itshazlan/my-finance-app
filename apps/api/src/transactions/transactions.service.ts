@@ -115,4 +115,18 @@ export class TransactionsService {
 
         return Object.values(days);
     }
+
+    // Fungsi untuk menghapus transaksi
+    async remove(id: string, userId: string) {
+        // Pastikan transaksi ini ada dan milik userId
+        const transaction = await this.prisma.transaction.findFirst({
+            where: { id, userId }
+        });
+
+        if (!transaction) return null;
+
+        return this.prisma.transaction.delete({
+            where: { id }
+        });
+    }
 }

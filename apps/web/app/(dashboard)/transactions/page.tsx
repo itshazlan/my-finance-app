@@ -1,11 +1,45 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Swal from "sweetalert2";
 import type { Transaction } from "@repo/types";
 import { API_URL } from "@/lib/api";
 
 export default function TransactionsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${API_URL}/transactions/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Gagal menghapus transaksi");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["summary"] }); // invalidasi juga agar sync dengan dashboard
+      
+      Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "success",
+        title: "Transaksi dihapus",
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+      });
+    },
+    onError: () => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "Gagal menghapus transaksi.",
+        confirmButtonColor: "#f43f5e",
+      });
+    },
+  });
 
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
     queryKey: ["transactions"],
@@ -46,16 +80,16 @@ export default function TransactionsPage() {
           {/* Table Header */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "1.5fr 2fr 1.5fr 1.5fr",
+            gridTemplateColumns: "1.5fr 2fr 1.5fr 1.5fr 40px",
             background: "#f8fafc",
             borderBottom: "1px solid #e2e8f0",
             padding: "12px 24px",
           }}>
-            {["Tanggal", "Keterangan", "Kategori", "Jumlah"].map((h, i) => (
-              <span key={h} style={{
+            {["Tanggal", "Keterangan", "Kategori", "Jumlah", ""].map((h, i) => (
+              <span key={i} style={{
                 fontSize: 11, fontWeight: 700, color: "#94a3b8",
                 textTransform: "uppercase", letterSpacing: "0.06em",
-                textAlign: i === 3 ? "right" : "left"
+                textAlign: i === 3 ? "right" : i === 4 ? "center" : "left"
               }}>{h}</span>
             ))}
           </div>
@@ -75,7 +109,7 @@ export default function TransactionsPage() {
             transactions.map((t: Transaction, idx: number) => (
               <div key={t.id} style={{
                 display: "grid",
-                gridTemplateColumns: "1.5fr 2fr 1.5fr 1.5fr",
+                gridTemplateColumns: "1.5fr 2fr 1.5fr 1.5fr 40px",
                 padding: "16px 24px",
                 borderBottom: idx < transactions.length - 1 ? "1px solid #f1f5f9" : "none",
                 alignItems: "center",
@@ -98,6 +132,29 @@ export default function TransactionsPage() {
                 <span style={{ textAlign: "right", fontWeight: 700, fontSize: 14, color: t.type === "EXPENSE" ? "#f43f5e" : "#10b981" }}>
                   {t.type === "EXPENSE" ? "−" : "+"} Rp {t.amount.toLocaleString("id-ID")}
                 </span>
+                <button
+                    onClick={() => {
+                      Swal.fire({
+                        title: "Yakin Hapus?",
+                        text: "Riwayat transaksi ini tidak dapat dikembalikan semula!",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonColor: "#f43f5e",
+                        cancelButtonColor: "#94a3b8",
+                        confirmButtonText: "Hapus",
+                        cancelButtonText: "Batal",
+                      }).then((result) => {
+                        if (result.isConfirmed) {
+                          deleteMutation.mutate(t.id);
+                        }
+                      });
+                    }}
+                    style={{ background: "transparent", border: "none", cursor: "pointer", color: "#cbd5e1", transition: "color 0.2s", margin: "0 auto" }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = "#f43f5e"}
+                    onMouseLeave={(e) => e.currentTarget.style.color = "#cbd5e1"}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
               </div>
             ))
           )}

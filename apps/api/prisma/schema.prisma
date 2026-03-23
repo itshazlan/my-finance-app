@@ -21,8 +21,9 @@ enum TransactionType {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  password  String
-  name      String?
+  password       String
+  name           String?
+  telegramChatId String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

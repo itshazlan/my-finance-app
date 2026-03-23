@@ -1,8 +1,9 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import type { TransactionSummary } from "@repo/types";
+import type { Transaction, TransactionSummary } from "@repo/types";
 import { API_URL } from "@/lib/api";
+import Swal from "sweetalert2";
 import {
   BarChart,
   Bar,
@@ -86,6 +87,57 @@ export default function ReportsPage() {
   const total = summary.INCOME + summary.EXPENSE;
   const incomeRatio = total > 0 ? (summary.INCOME / total) * 100 : 0;
 
+  // Fungsi Export ke CSV (Bisa Langsung dibuka di Excel)
+  const handleExportExcel = async () => {
+    try {
+      // 1. Ambil semua transaksi
+      const res = await fetch(`${API_URL}/transactions`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Gagal memuat transaksi");
+      const transactionsData: Transaction[] = await res.json();
+
+      if (transactionsData.length === 0) {
+        Swal.fire({ icon: 'info', title: 'Data Kosong', text: 'Tidak ada data transaksi untuk diekspor.' });
+        return;
+      }
+
+      // 2. Buat format CSV menggunakan Blob agar support karakter spesial
+      let csvString = "No,Tanggal,Kategori,Tipe,Nominal,Keterangan\n";
+
+      transactionsData.forEach((t, index) => {
+        const dateStr = new Date(t.date).toLocaleDateString("id-ID");
+        const categoryName = t.category?.name || "Umum";
+        const typeStr = t.type === "INCOME" ? "Pemasukan" : "Pengeluaran";
+        const descStr = (t.description || "").replace(/,/g, " "); // hapus koma agar tidak error di csv
+        
+        csvString += `${index + 1},${dateStr},${categoryName},${typeStr},${t.amount},${descStr}\n`;
+      });
+
+      // 3. Buat URL Blob dan mulai download
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Laporan_Keuangan_FinanceApp_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link); // Dibutuhkan oleh Firefox
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "success",
+        title: "Export CSV Sukses!",
+        showConfirmButton: false,
+        timer: 3000
+      });
+    } catch (error) {
+       Swal.fire({ icon: 'error', title: 'Oops...', text: 'Terjadi kesalahan saat mengekspor data.' });
+    }
+  };
+
   return (
     <div className="page-container">
       {/* Header */}
@@ -103,6 +155,28 @@ export default function ReportsPage() {
         <p style={{ color: "#64748b", fontSize: 14, marginTop: 6 }}>
           Analisis arus kas dan tren keuangan Anda secara komprehensif.
         </p>
+
+        <button 
+          onClick={handleExportExcel}
+          style={{
+             marginTop: 16,
+             background: "#10b981", 
+             color: "white", 
+             border: "none", 
+             padding: "8px 16px",
+             fontSize: 14,
+             fontWeight: 600,
+             borderRadius: 8,
+             cursor: "pointer",
+             display: "flex",
+             alignItems: "center",
+             gap: 8,
+             boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)"
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          Export Transaksi (Excel / CSV)
+        </button>
       </div>
 
       {isLoading ? (
