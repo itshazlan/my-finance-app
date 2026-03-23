@@ -36,6 +36,7 @@ model Category {
   id     String          @id @default(uuid())
   name   String
   type   TransactionType
+  budget Float?          // Limit Anggaran (Khusus pengeluaran)
   userId String
   user   User            @relation(fields: [userId], references: [id])
 

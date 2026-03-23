@@ -7,6 +7,7 @@ export interface Category {
   name: string;
   type: TransactionType;
   userId: string;
+  budget?: number | null;
 }
 
 export interface Transaction {
@@ -26,10 +27,19 @@ export interface Transaction {
   };
 }
 
+export interface CategoryBudgetProgress {
+  categoryId: string;
+  categoryName: string;
+  budget: number;
+  spent: number;
+  percentage: number;
+}
+
 export interface TransactionSummary {
   INCOME: number;
   EXPENSE: number;
   BALANCE: number;
+  BUDGETS?: CategoryBudgetProgress[];
 }
 
 export interface CreateTransactionRequest {
@@ -42,11 +52,13 @@ export interface CreateTransactionRequest {
 export interface CreateCategoryRequest {
   name: string;
   type: TransactionType;
+  budget?: number | null;
 }
 
 export interface UpdateCategoryRequest {
   name?: string;
   type?: TransactionType;
+  budget?: number | null;
 }
 
 export interface AuthResponse {

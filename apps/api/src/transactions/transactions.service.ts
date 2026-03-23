@@ -106,7 +106,35 @@ export class TransactionsService {
 
         result.BALANCE = result.INCOME - result.EXPENSE;
 
-        return result;
+        // Ambil budget tiap kategori
+        const budgetsData = await this.prisma.category.findMany({
+            where: { userId, type: 'EXPENSE', budget: { not: null } },
+            select: {
+                id: true,
+                name: true,
+                budget: true,
+                transactions: {
+                    where: {
+                        date: { gte: startOfMonth, lte: endOfMonth },
+                        type: 'EXPENSE'
+                    },
+                    select: { amount: true }
+                }
+            }
+        });
+
+        const BUDGETS = budgetsData.map(b => {
+             const spent = b.transactions.reduce((acc, curr) => acc + curr.amount, 0);
+             return {
+                 categoryId: b.id,
+                 categoryName: b.name,
+                 budget: b.budget || 0,
+                 spent: spent,
+                 percentage: (b.budget || 0) > 0 ? (spent / (b.budget || 1)) * 100 : 0
+             }
+        });
+
+        return { ...result, BUDGETS };
     }
 
     // Fungsi untuk mengambil data transaksi 7 hari terakhir (Bisa dimodifikasi mengikuti tanggal akhir filter)

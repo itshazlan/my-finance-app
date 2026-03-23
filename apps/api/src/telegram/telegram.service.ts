@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Telegraf } from 'telegraf';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { GoogleGenAI } from '@google/genai';
@@ -62,7 +63,19 @@ export class TelegramService implements OnModuleInit {
         data: { telegramChatId: ctx.from.id.toString() }
       });
 
-      return ctx.reply(`Sukses! Akun Telegram kamu telah dikaitkan dengan email ${email}. Sekarang kamu cukup mengirimkan foto struk belanja ke bot ini!`);
+      return ctx.reply(`Sukses! Akun Telegram kamu telah dikaitkan dengan email ${email}. Sekarang kamu cukup mengirimkan foto struk belanja ke bot ini! Untuk melihat ringkasan bulan ini, ketik /rekap`);
+    });
+
+    this.bot.command('rekap', async (ctx) => {
+      const chatId = ctx.from.id.toString();
+      const user = await this.prisma.user.findUnique({ where: { telegramChatId: chatId } });
+      if (!user) return ctx.reply('Akun kamu belum dikaitkan. Jalankan /link <email_kamu> terlebih dahulu.');
+
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+      
+      await this.sendRecapToUser(user, firstDay, lastDay, `Bulan Ini`);
     });
 
     this.bot.on('photo', async (ctx) => {
@@ -176,5 +189,65 @@ Jika tidak ada yang cocok atau list kosong, biarkan categoryId null.`;
         ctx.telegram.editMessageText(ctx.chat.id, processingMessage.message_id, undefined, 'Terjadi kesalahan saat memproses gambar. Pastikan API key Google Gemini aktif atau format foto struk benar.');
       }
     });
+  }
+
+  // Menjalankan Notifikasi Otomatis pada tanggal 1 setiap bulan jam 08:00 Pagi
+  @Cron('0 8 1 * *')
+  async handleMonthlyRecap() {
+    this.logger.log('Memulai job rekap bulanan otomatis...');
+    if (!this.bot) return;
+
+    try {
+      const users = await this.prisma.user.findMany({
+        where: { telegramChatId: { not: null } },
+      });
+
+      const today = new Date();
+      // Filter transaksi 1 bulan utuh ke belakang
+      const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+      const prevMonthName = firstDay.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+      for (const user of users) {
+         await this.sendRecapToUser(user, firstDay, lastDay, prevMonthName);
+      }
+    } catch (err) {
+      this.logger.error('Gagal mengirim rekap bulanan otomatis', err);
+    }
+  }
+
+  private async sendRecapToUser(user: any, start: Date, end: Date, label: string) {
+      try {
+        const summary = await this.prisma.transaction.groupBy({
+          by: ['type'],
+          where: { userId: user.id, date: { gte: start, lte: end } },
+          _sum: { amount: true },
+        });
+
+        const topExpense = await this.prisma.transaction.findFirst({
+           where: { userId: user.id, type: 'EXPENSE', date: { gte: start, lte: end } },
+           orderBy: { amount: 'desc' },
+           include: { category: true }
+        });
+
+        let income = 0, expense = 0;
+        summary.forEach(s => {
+          if (s.type === 'INCOME') income = s._sum.amount || 0;
+          if (s.type === 'EXPENSE') expense = s._sum.amount || 0;
+        });
+
+        const sisa = income - expense;
+        const msg = `📊 *Rekap Keuangan ${label}*\n\n`
+            + `Halo ${user.name || 'Bos'}! Berikut rangkuman pergerakan kasmu:\n\n`
+            + `🟢 Pemasukan: Rp ${income.toLocaleString('id-ID')}\n`
+            + `🔴 Pengeluaran: Rp ${expense.toLocaleString('id-ID')}\n`
+            + `💰 Sisa Saldo: Rp ${sisa.toLocaleString('id-ID')}\n\n`
+            + (topExpense ? `🔥 *Pengeluaran Jumbo*\n${topExpense.description || topExpense.category.name}: Rp ${topExpense.amount.toLocaleString('id-ID')}\n\n` : '')
+            + `Tetap hemat dan semangat! 🚀`;
+
+        await this.bot.telegram.sendMessage(user.telegramChatId, msg, { parse_mode: 'Markdown' });
+      } catch(err) {
+        this.logger.error(`Gagal mengirim pesan ke user ${user.id}`, err);
+      }
   }
 }

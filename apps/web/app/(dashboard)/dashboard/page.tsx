@@ -301,6 +301,38 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Budget Progress */}
+      {summary.BUDGETS && summary.BUDGETS.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <p className="section-title">Limit Anggaran Bulanan</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+            {summary.BUDGETS.map((b) => {
+              const p = Math.min(b.percentage, 100);
+              const isOver = b.percentage >= 100;
+              const color = p < 75 ? "#10b981" : p < 90 ? "#f59e0b" : "#f43f5e";
+              return (
+                <div key={b.categoryId} className="card" style={{ padding: "16px 20px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
+                     <span style={{ fontWeight: 700, color: "#0f172a" }}>{b.categoryName}</span>
+                     <span style={{ fontSize: 12, fontWeight: 800, color, background: `${color}15`, padding: "4px 8px", borderRadius: 6 }}>
+                        {isOver ? "Melebihi Batas!" : `${b.percentage.toFixed(0)}% Digunakan`}
+                     </span>
+                  </div>
+                  {/* Progress Bar Container */}
+                  <div style={{ height: 10, background: "#f1f5f9", borderRadius: 5, overflow: "hidden" }}>
+                     <div style={{ height: "100%", width: `${p}%`, background: color, transition: "all 0.5s ease" }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+                     <span style={{ fontSize: 13, color: "#64748b" }}>Rp {b.spent.toLocaleString("id-ID")}</span>
+                     <span style={{ fontSize: 13, color: "#94a3b8", fontWeight: 600 }}>Batas: Rp {b.budget.toLocaleString("id-ID")}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Form */}
       <AddTransactionForm />
 

@@ -24,6 +24,28 @@ a {
   text-decoration: none;
 }
 
+/* ─── Dark Mode Smart Invert ─── */
+html[data-theme='dark'] {
+  filter: invert(1) hue-rotate(180deg);
+  background-color: #000;
+}
+
+html[data-theme='dark'] .recharts-wrapper,
+html[data-theme='dark'] img,
+html[data-theme='dark'] .swal2-icon {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Adjust colors slightly that get too intense when inverted */
+html[data-theme='dark'] .navbar-glass {
+  background: rgba(10, 10, 10, 0.92);
+}
+
+html[data-theme='dark'] .card-dark {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
 /* ─── Navbar ─── */
 .navbar-glass {
   background: rgba(255, 255, 255, 0.92);

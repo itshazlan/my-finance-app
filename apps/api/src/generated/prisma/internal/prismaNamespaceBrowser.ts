@@ -89,6 +89,7 @@ export const CategoryScalarFieldEnum = {
   id: 'id',
   name: 'name',
   type: 'type',
+  budget: 'budget',
   userId: 'userId'
 } as const
 
