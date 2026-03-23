@@ -30,13 +30,15 @@ services:
     container_name: finance-api
     restart: always
     ports:
-      - '3000:3000'
+      - '4000:4000'
     depends_on:
       db:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgresql://${DB_USER:-user_finance}:${DB_PASSWORD:-password_aman}@db:5432/${DB_NAME:-finance_tracker}?schema=public
       - JWT_SECRET=${JWT_SECRET:-super-secret-key}
+      - NODE_ENV=development
+      - PORT=4000
 
   web:
     build:
