@@ -1,4 +1,4 @@
-import { TransactionType } from '@prisma/client';
+import { TransactionType } from '../../generated/prisma/client.js';
 import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
 export class CreateTransactionDto {
@@ -16,8 +16,4 @@ export class CreateTransactionDto {
     @IsUUID()
     @IsNotEmpty()
     categoryId: string;
-
-    @IsUUID()
-    @IsNotEmpty()
-    userId: string;
 }

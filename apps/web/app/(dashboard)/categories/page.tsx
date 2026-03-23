@@ -1,239 +1,214 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Category, TransactionType, CreateCategoryRequest } from "@repo/types";
+import { API_URL } from "@/lib/api";
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [formData, setFormData] = useState({ name: "", type: "EXPENSE" });
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const [formData, setFormData] = useState<CreateCategoryRequest>({ name: "", type: "EXPENSE" });
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const router = useRouter();
+  const { data: categories = [], isLoading } = useQuery<Category[]>({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/categories`, { credentials: "include" });
+      if (!res.ok) {
+        if (res.status === 401) router.push("/login");
+        throw new Error("Gagal mengambil kategori");
+      }
+      return res.json();
+    },
+  });
 
-  const loadCategories = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("http://localhost:4000/api/categories", {
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${API_URL}/categories/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify(formData),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data);
-      } else {
-        router.push("/login");
-      }
-    } catch (error) {
-      console.error("Failed to load categories:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      if (!res.ok) { const err = await res.json(); throw new Error(err.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      setEditingId(null);
+      setFormData({ name: "", type: "EXPENSE" });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+    onError: (err: Error) => alert(`Gagal menyimpan: ${err.message}`),
+  });
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${API_URL}/categories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.message); }
+      return res.json();
+    },
+    onSuccess: () => {
+      setFormData({ name: "", type: "EXPENSE" });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+    onError: (err: Error) => alert(`Gagal menambah: ${err.message}`),
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingId) {
-        // Edit Mode
-        const res = await fetch(`http://localhost:4000/api/categories/${editingId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(formData),
-        });
-
-        if (res.ok) {
-          setEditingId(null);
-          setFormData({ name: "", type: "EXPENSE" });
-          loadCategories();
-        } else {
-          const err = await res.json();
-          alert(`Gagal menyimpan: ${err.message}`);
-        }
-      } else {
-        // Create Mode
-        const res = await fetch("http://localhost:4000/api/categories", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(formData),
-        });
-
-        if (res.ok) {
-          setFormData({ name: "", type: "EXPENSE" });
-          loadCategories();
-        } else {
-          const err = await res.json();
-          alert(`Gagal menambah: ${err.message}`);
-        }
-      }
-    } catch (error) {
-      alert("Terjadi kesalahan jaringan.");
-    }
-  };
-
-  const handleEdit = (category: any) => {
-    setEditingId(category.id);
-    setFormData({ name: category.name, type: category.type });
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Apakah kamu yakin ingin menghapus kategori ini?")) return;
-
-    try {
-      const res = await fetch(`http://localhost:4000/api/categories/${id}`, {
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${API_URL}/categories/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.message); }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["categories"] }),
+    onError: (err: Error) => alert(`Gagal menghapus: ${err.message}`),
+  });
 
-      if (res.ok) {
-        loadCategories();
-      } else {
-        const err = await res.json();
-        alert(`Gagal menghapus: ${err.message}`);
-      }
-    } catch (error) {
-      alert("Terjadi kesalahan jaringan.");
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingId) editMutation.mutate();
+    else createMutation.mutate();
   };
 
+  const isSaving = createMutation.isPending || editMutation.isPending;
+
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Kategori Transaksi</h1>
-        <p className="text-gray-500 text-sm mt-1">
+    <div className="page-container">
+      {/* Header */}
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.5px" }}>
+          Kategori Transaksi
+        </h1>
+        <p style={{ color: "#64748b", fontSize: 14, marginTop: 6 }}>
           Kelola kategori untuk mengklasifikasikan keuanganmu dengan rapi.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Form Bagian Kiri */}
-        <div className="md:col-span-1">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">
-              {editingId ? "Edit Kategori" : "Tambah Kategori"}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nama Kategori
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Misal: Makanan, Gaji"
-                  className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                />
-              </div>
+      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 24, alignItems: "start" }}>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipe Kategori
-                </label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                >
-                  <option value="EXPENSE">Pengeluaran</option>
-                  <option value="INCOME">Pemasukan</option>
-                </select>
-              </div>
+        {/* ---- Form Panel ---- */}
+        <div className="card">
+          <p style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 20 }}>
+            {editingId ? "✏️ Edit Kategori" : "➕ Tambah Kategori"}
+          </p>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 6 }}>
+                Nama Kategori
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Misal: Makanan, Gaji"
+                className="form-input"
+              />
+            </div>
 
-              <div className="flex gap-2">
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 6 }}>
+                Tipe
+              </label>
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value as TransactionType })}
+                className="form-input"
+              >
+                <option value="EXPENSE">Pengeluaran</option>
+                <option value="INCOME">Pemasukan</option>
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="submit" disabled={isSaving} className="btn-primary" style={{ flex: 1 }}>
+                {isSaving ? "Menyimpan..." : (editingId ? "Simpan Perubahan" : "Tambah")}
+              </button>
+              {editingId && (
                 <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition"
+                  type="button"
+                  onClick={() => { setEditingId(null); setFormData({ name: "", type: "EXPENSE" }); }}
+                  style={{
+                    padding: "10px 16px", borderRadius: 10, border: "1.5px solid #e2e8f0",
+                    background: "#f8fafc", color: "#64748b", fontWeight: 600, fontSize: 14, cursor: "pointer"
+                  }}
                 >
-                  {editingId ? "Simpan Perubahan" : "Tambah"}
+                  Batal
                 </button>
-                {editingId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(null);
-                      setFormData({ name: "", type: "EXPENSE" });
-                    }}
-                    className="px-4 bg-gray-100 text-gray-600 py-2 rounded-lg font-medium hover:bg-gray-200 transition"
-                  >
-                    Batal
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
+              )}
+            </div>
+          </form>
         </div>
 
-        {/* Tabel Kategori Bagian Kanan */}
-        <div className="md:col-span-2">
+        {/* ---- Table Panel ---- */}
+        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+          {/* Table Header */}
+          <div style={{
+            display: "grid", gridTemplateColumns: "2fr 1.2fr auto",
+            background: "#f8fafc", borderBottom: "1px solid #e2e8f0", padding: "12px 24px",
+          }}>
+            {["Nama", "Tipe", "Aksi"].map((h, i) => (
+              <span key={h} style={{
+                fontSize: 11, fontWeight: 700, color: "#94a3b8",
+                textTransform: "uppercase", letterSpacing: "0.06em",
+                textAlign: i === 2 ? "right" : "left"
+              }}>{h}</span>
+            ))}
+          </div>
+
           {isLoading ? (
-            <p className="text-center text-gray-400 py-10 bg-white rounded-xl shadow-sm border border-gray-100">
-              Memuat kategori...
-            </p>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nama
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tipe
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {categories.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="px-6 py-10 text-center text-gray-400">
-                        Belum ada kategori. Silakan buat yang pertama.
-                      </td>
-                    </tr>
-                  )}
-                  {categories.map((c: any) => (
-                    <tr key={c.id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {c.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span
-                          className={`text-xs px-2 py-1 rounded font-semibold ${
-                            c.type === "EXPENSE"
-                              ? "bg-red-50 text-red-600"
-                              : "bg-emerald-50 text-emerald-600"
-                          }`}
-                        >
-                          {c.type === "EXPENSE" ? "Pengeluaran" : "Pemasukan"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-3">
-                        <button
-                          onClick={() => handleEdit(c)}
-                          className="text-blue-600 hover:text-blue-900 transition"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(c.id)}
-                          className="text-red-600 hover:text-red-900 transition"
-                        >
-                          Hapus
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8", fontSize: 14 }}>Memuat kategori...</div>
+          ) : categories.length === 0 ? (
+            <div className="empty-state">
+              <p style={{ fontWeight: 600, color: "#475569", marginBottom: 4 }}>Belum ada kategori</p>
+              <p style={{ fontSize: 14, color: "#94a3b8" }}>Buat kategori pertama di panel sebelah kiri.</p>
             </div>
+          ) : (
+            categories.map((c: Category, idx: number) => (
+              <div key={c.id} style={{
+                display: "grid", gridTemplateColumns: "2fr 1.2fr auto",
+                padding: "14px 24px", alignItems: "center",
+                borderBottom: idx < categories.length - 1 ? "1px solid #f1f5f9" : "none",
+                transition: "background 0.12s",
+              }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#fafafa")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+              >
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{c.name}</span>
+                <span>
+                  <span className={`badge ${c.type === "EXPENSE" ? "badge-expense" : "badge-income"}`}>
+                    {c.type === "EXPENSE" ? "Pengeluaran" : "Pemasukan"}
+                  </span>
+                </span>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => { setEditingId(c.id); setFormData({ name: c.name, type: c.type }); }}
+                    style={{ fontSize: 13, fontWeight: 600, color: "#6366f1", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#eef2ff")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => { if (confirm("Hapus kategori ini?")) deleteMutation.mutate(c.id); }}
+                    style={{ fontSize: 13, fontWeight: 600, color: "#f43f5e", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#fff1f2")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>

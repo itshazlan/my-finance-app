@@ -1,47 +1,106 @@
+"use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const navItems = [
+    { href: "/dashboard", label: "Dasbor" },
+    { href: "/transactions", label: "Transaksi" },
+    { href: "/categories", label: "Kategori" },
+    { href: "/reports", label: "Laporan" },
+];
 
 export default function DashboardLayout({
-  children,
+    children,
 }: {
-  children: React.ReactNode;
+    children: React.ReactNode;
 }) {
-  return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col font-sans">
-      <nav className="bg-white/80 backdrop-blur-md border-b border-zinc-200 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-10">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-md">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                </svg>
-              </div>
-              <h1 className="text-xl font-extrabold text-zinc-900 tracking-tight">FinanceTracker</h1>
-            </Link>
-            <div className="hidden md:flex space-x-1">
-              <Link
-                href="/dashboard"
-                className="px-4 py-2 text-sm font-semibold text-zinc-500 rounded-md hover:text-zinc-900 hover:bg-zinc-100 transition-all font-sans"
-              >
-                Dasbor
-              </Link>
-              <Link
-                href="/transactions"
-                className="px-4 py-2 text-sm font-semibold text-zinc-500 rounded-md hover:text-zinc-900 hover:bg-zinc-100 transition-all font-sans"
-              >
-                Transaksi
-              </Link>
-              <Link
-                href="/categories"
-                className="px-4 py-2 text-sm font-semibold text-zinc-500 rounded-md hover:text-zinc-900 hover:bg-zinc-100 transition-all font-sans"
-              >
-                Kategori
-              </Link>
-            </div>
-          </div>
+    const pathname = usePathname();
+
+    return (
+        <div style={{ minHeight: "100vh", background: "#f8f9fa", display: "flex", flexDirection: "column" }}>
+            <nav className="navbar-glass">
+                <div style={{
+                    maxWidth: 1100, margin: "0 auto", padding: "0 32px",
+                    height: 64, display: "flex", alignItems: "center", justifyContent: "space-between"
+                }}>
+                    {/* Logo + Nav */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
+                        {/* Logo */}
+                        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+                            <div style={{
+                                width: 34, height: 34, borderRadius: 10,
+                                background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                boxShadow: "0 4px 12px rgba(99,102,241,0.3)",
+                            }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <span style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.3px" }}>
+                                FinanceTracker
+                            </span>
+                        </Link>
+
+                        {/* Nav Links */}
+                        <div style={{ display: "flex", gap: 4 }}>
+                            {navItems.map(({ href, label }) => {
+                                const isActive = pathname === href;
+                                return (
+                                    <Link
+                                        key={href}
+                                        href={href}
+                                        style={{
+                                            position: "relative",
+                                            padding: "7px 14px",
+                                            borderRadius: 8,
+                                            fontSize: 14,
+                                            fontWeight: isActive ? 700 : 500,
+                                            color: isActive ? "#6366f1" : "#64748b",
+                                            background: isActive ? "#eef2ff" : "transparent",
+                                            textDecoration: "none",
+                                            transition: "all 0.15s ease",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 6,
+                                        }}
+                                    >
+                                        {/* Active dot indicator */}
+                                        {isActive && (
+                                            <span style={{
+                                                width: 6, height: 6, borderRadius: "50%",
+                                                background: "#6366f1",
+                                                display: "inline-block",
+                                                flexShrink: 0,
+                                            }} />
+                                        )}
+                                        {label}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Active underline bar */}
+                <div style={{ height: 2, background: "#f1f5f9", position: "relative" }}>
+                    {navItems.map(({ href }) =>
+                        pathname === href ? (
+                            <div
+                                key={href}
+                                style={{
+                                    position: "absolute",
+                                    bottom: 0, top: 0,
+                                    left: 0, right: 0,
+                                    background: "transparent",
+                                }}
+                            />
+                        ) : null
+                    )}
+                </div>
+            </nav>
+
+            <main style={{ flex: 1 }}>{children}</main>
         </div>
-      </nav>
-      <main className="flex-1">{children}</main>
-    </div>
-  );
+    );
 }

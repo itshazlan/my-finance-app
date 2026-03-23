@@ -2,15 +2,55 @@ services:
   db:
     image: postgres:15-alpine
     container_name: finance-db
+    platform: linux/arm64
     restart: always
     environment:
-      POSTGRES_USER: user_finance
-      POSTGRES_PASSWORD: 12345678
-      POSTGRES_DB: finance_tracker
+      POSTGRES_USER: ${DB_USER:-user_finance}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password_aman}
+      POSTGRES_DB: ${DB_NAME:-finance_tracker}
     ports:
       - '5432:5432'
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_finance -d finance_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: finance-api
+    restart: always
+    ports:
+      - '3000:3000'
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-user_finance}:${DB_PASSWORD:-password_aman}@db:5432/${DB_NAME:-finance_tracker}?schema=public
+      - JWT_SECRET=${JWT_SECRET:-super-secret-key}
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: finance-web
+    restart: always
+    ports:
+      - '3456:3456'
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3000}
 
 volumes:
   db_data:
