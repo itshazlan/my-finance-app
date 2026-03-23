@@ -1,15 +1,10 @@
 /**
- * Base URL backend API, dibaca dari environment variable.
- * Gunakan NEXT_PUBLIC_API_URL di .env.local untuk development
- * dan di platform deployment (Vercel, Railway, dll) untuk production.
- *
- * Contoh .env.local:
- *   NEXT_PUBLIC_API_URL=http://localhost:4000/api
- *
- * Contoh production:
- *   NEXT_PUBLIC_API_URL=https://api.yourdomain.com/api
+ * Base URL backend API, sekarang diarahkan ke /api
+ * karena kita mem-proxy semua request lewat Next.js di next.config.js.
+ * Ini memastikan issue login cross-domain cookie terpecahkan.
+ * (Vercel middleware akan bisa membaca token-nya).
  */
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+export const API_URL = "/api";
 
 /**
  * Helper fetch dengan credentials (cookie HttpOnly) sudah disertakan otomatis.
