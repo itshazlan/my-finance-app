@@ -9,7 +9,7 @@ export default function CategoriesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [formData, setFormData] = useState<CreateCategoryRequest>({ name: "", type: "EXPENSE" });
+  const [formData, setFormData] = useState<CreateCategoryRequest>({ name: "", type: "EXPENSE", budget: null });
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
@@ -37,7 +37,7 @@ export default function CategoriesPage() {
     },
     onSuccess: () => {
       setEditingId(null);
-      setFormData({ name: "", type: "EXPENSE" });
+      setFormData({ name: "", type: "EXPENSE", budget: null });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     },
     onError: (err: Error) => alert(`Gagal menyimpan: ${err.message}`),
@@ -55,7 +55,7 @@ export default function CategoriesPage() {
       return res.json();
     },
     onSuccess: () => {
-      setFormData({ name: "", type: "EXPENSE" });
+      setFormData({ name: "", type: "EXPENSE", budget: null });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
     },
     onError: (err: Error) => alert(`Gagal menambah: ${err.message}`),
@@ -93,7 +93,7 @@ export default function CategoriesPage() {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 24, alignItems: "start" }}>
+      <div className="categories-layout">
 
         {/* ---- Form Panel ---- */}
         <div className="card">
@@ -129,6 +129,26 @@ export default function CategoriesPage() {
               </select>
             </div>
 
+            {formData.type === "EXPENSE" && (
+              <div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 6 }}>
+                  Limit Anggaran Bulanan (Opsional)
+                </label>
+                <div style={{ position: "relative" }}>
+                   <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 600, fontSize: 13 }}>Rp</span>
+                   <input
+                     type="number"
+                     min="0"
+                     value={formData.budget || ""}
+                     onChange={(e) => setFormData({ ...formData, budget: e.target.value ? Number(e.target.value) : null })}
+                     placeholder="Misal: 2000000"
+                     className="form-input"
+                     style={{ paddingLeft: 40 }}
+                   />
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 8 }}>
               <button type="submit" disabled={isSaving} className="btn-primary" style={{ flex: 1 }}>
                 {isSaving ? "Menyimpan..." : (editingId ? "Simpan Perubahan" : "Tambah")}
@@ -136,7 +156,7 @@ export default function CategoriesPage() {
               {editingId && (
                 <button
                   type="button"
-                  onClick={() => { setEditingId(null); setFormData({ name: "", type: "EXPENSE" }); }}
+                  onClick={() => { setEditingId(null); setFormData({ name: "", type: "EXPENSE", budget: null }); }}
                   style={{
                     padding: "10px 16px", borderRadius: 10, border: "1.5px solid #e2e8f0",
                     background: "#f8fafc", color: "#64748b", fontWeight: 600, fontSize: 14, cursor: "pointer"
@@ -150,7 +170,8 @@ export default function CategoriesPage() {
         </div>
 
         {/* ---- Table Panel ---- */}
-        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+        <div className="table-responsive-wrapper">
+         <div className="table-min-width">
           {/* Table Header */}
           <div style={{
             display: "grid", gridTemplateColumns: "2fr 1.2fr auto",
@@ -183,16 +204,21 @@ export default function CategoriesPage() {
                 onMouseEnter={e => (e.currentTarget.style.background = "#fafafa")}
                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               >
-                <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>{c.name}</span>
+                <div>
+                   <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", display: "block" }}>{c.name}</span>
+                   {c.budget && (
+                     <span style={{ fontSize: 12, color: "#64748b" }}>Limit: Rp {c.budget.toLocaleString("id-ID")}</span>
+                   )}
+                </div>
                 <span>
                   <span className={`badge ${c.type === "EXPENSE" ? "badge-expense" : "badge-income"}`}>
                     {c.type === "EXPENSE" ? "Pengeluaran" : "Pemasukan"}
                   </span>
                 </span>
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
                   <button
-                    onClick={() => { setEditingId(c.id); setFormData({ name: c.name, type: c.type }); }}
-                    style={{ fontSize: 13, fontWeight: 600, color: "#6366f1", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6 }}
+                    onClick={() => { setEditingId(c.id); setFormData({ name: c.name, type: c.type, budget: c.budget || null }); }}
+                    style={{ fontSize: 13, alignSelf: "center", fontWeight: 600, color: "#6366f1", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6 }}
                     onMouseEnter={e => (e.currentTarget.style.background = "#eef2ff")}
                     onMouseLeave={e => (e.currentTarget.style.background = "none")}
                   >
@@ -210,6 +236,7 @@ export default function CategoriesPage() {
               </div>
             ))
           )}
+         </div>
         </div>
       </div>
     </div>

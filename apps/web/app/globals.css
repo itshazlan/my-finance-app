@@ -24,6 +24,28 @@ a {
   text-decoration: none;
 }
 
+/* ─── Dark Mode Smart Invert ─── */
+html[data-theme='dark'] {
+  filter: invert(1) hue-rotate(180deg);
+  background-color: #000;
+}
+
+html[data-theme='dark'] .recharts-wrapper,
+html[data-theme='dark'] img,
+html[data-theme='dark'] .swal2-icon {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Adjust colors slightly that get too intense when inverted */
+html[data-theme='dark'] .navbar-glass {
+  background: rgba(10, 10, 10, 0.92);
+}
+
+html[data-theme='dark'] .card-dark {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
 /* ─── Navbar ─── */
 .navbar-glass {
   background: rgba(255, 255, 255, 0.92);
@@ -51,6 +73,45 @@ a {
   background: #f1f5f9;
 }
 
+.nav-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 36px;
+}
+
+.nav-links-wrapper {
+  display: flex;
+  gap: 4px;
+}
+
+@media (max-width: 768px) {
+  .nav-container {
+    height: auto;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px 20px 0;
+    gap: 16px;
+  }
+  
+  .nav-links-wrapper {
+    width: 100vw;
+    margin-left: -20px;
+    padding: 0 20px 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  
+  .nav-links-wrapper::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* ─── Layout ─── */
 .page-container {
   max-width: 1100px;
@@ -71,10 +132,33 @@ a {
   margin-bottom: 28px;
 }
 
+.categories-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
 @media (max-width: 900px) {
   .summary-grid {
     grid-template-columns: 1fr;
   }
+  .categories-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Tables ─── */
+.table-responsive-wrapper {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-min-width {
+  min-width: 750px;
 }
 
 /* ─── Cards ─── */
@@ -181,6 +265,57 @@ a {
   border: 1px solid #f1f5f9;
   border-radius: 12px;
   transition: box-shadow 0.15s, transform 0.1s;
+  gap: 12px;
+  min-width: 0; /* Mencegah pelebaran liar akibat teks tanpa spasi */
+}
+
+.transaction-item-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.transaction-item-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.transaction-item-desc {
+  font-weight: 600;
+  font-size: 15px;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: block;
+}
+
+.transaction-item-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .transaction-item {
+    flex-wrap: wrap; /* Izinkan patah baris kalau benar-benar sesak */
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .transaction-item-left {
+    width: 100%;
+  }
+  .transaction-item-right {
+    width: 100%;
+    justify-content: space-between;
+    padding-left: 58px; /* sejajar dengan teks, melewati icon (44px + 14px) */
+    margin-top: -4px;
+  }
 }
 
 .transaction-item:hover {

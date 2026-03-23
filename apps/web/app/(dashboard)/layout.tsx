@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -15,35 +16,68 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const pathname = usePathname();
+    const [isDark, setIsDark] = useState(false);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'dark') {
+            setIsDark(true);
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    }, []);
+
+    const toggleTheme = () => {
+        const next = !isDark;
+        setIsDark(next);
+        if (next) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+        }
+    };
 
     return (
         <div style={{ minHeight: "100vh", background: "#f8f9fa", display: "flex", flexDirection: "column" }}>
             <nav className="navbar-glass">
-                <div style={{
-                    maxWidth: 1100, margin: "0 auto", padding: "0 32px",
-                    height: 64, display: "flex", alignItems: "center", justifyContent: "space-between"
-                }}>
-                    {/* Logo + Nav */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
+                <div className="nav-container">
+                    <div style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center" }}>
                         {/* Logo */}
                         <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
                             <div style={{
-                                width: 34, height: 34, borderRadius: 10,
+                                width: 32, height: 32, borderRadius: 10,
                                 background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 boxShadow: "0 4px 12px rgba(99,102,241,0.3)",
                             }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                                 </svg>
                             </div>
-                            <span style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.3px" }}>
+                            <span style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.3px", transition: "color 0.2s" }} className="nav-logo-text">
                                 FinanceTracker
                             </span>
                         </Link>
 
-                        {/* Nav Links */}
-                        <div style={{ display: "flex", gap: 4 }}>
+                        {/* Theme Toggle Button */}
+                        <button
+                            onClick={toggleTheme}
+                            style={{
+                                background: "transparent", border: "none", cursor: "pointer",
+                                fontSize: 20, padding: 8, display: "flex", alignItems: "center", justifyContent: "center",
+                                borderRadius: 8, transition: "background 0.2s"
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = "rgba(100, 116, 139, 0.1)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                            aria-label="Toggle Dark Mode"
+                        >
+                            {isDark ? "🌞" : "🌙"}
+                        </button>
+                    </div>
+
+                    {/* Nav Links */}
+                    <div className="nav-links-wrapper">
                             {navItems.map(({ href, label }) => {
                                 const isActive = pathname === href;
                                 return (
@@ -78,7 +112,6 @@ export default function DashboardLayout({
                                     </Link>
                                 );
                             })}
-                        </div>
                     </div>
                 </div>
 

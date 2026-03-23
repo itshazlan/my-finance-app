@@ -39,6 +39,8 @@ services:
       - JWT_SECRET=${JWT_SECRET:-super-secret-key}
       - NODE_ENV=development
       - PORT=4000
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
 
   web:
     build:

@@ -672,6 +672,7 @@ export const UserScalarFieldEnum = {
   email: 'email',
   password: 'password',
   name: 'name',
+  telegramChatId: 'telegramChatId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -683,6 +684,7 @@ export const CategoryScalarFieldEnum = {
   id: 'id',
   name: 'name',
   type: 'type',
+  budget: 'budget',
   userId: 'userId'
 } as const
 

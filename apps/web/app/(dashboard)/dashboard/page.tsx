@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Swal from "sweetalert2";
 import type { Category, Transaction, TransactionSummary, TransactionType } from "@repo/types";
 import { API_URL } from "@/lib/api";
 
@@ -70,11 +71,29 @@ function AddTransactionForm() {
       reset();
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
+      
+      // Tampilkan toast success
+      Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "success",
+        title: "Transaksi berhasil dicatat",
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+      });
     },
     onError: () => {
-      alert("Gagal menambah transaksi. Pastikan semua data benar!");
+      Swal.fire({
+        icon: "error",
+        title: "Pencatatan Gagal",
+        text: "Gagal menambah transaksi. Pastikan semua data benar!",
+        confirmButtonColor: "#f43f5e",
+      });
     },
   });
+
+
 
   const onSubmit = (data: TransactionFormValues) => {
     mutation.mutate(data);
@@ -152,6 +171,38 @@ export default function DashboardPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${API_URL}/transactions/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Gagal menghapus transaksi");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["summary"] });
+      
+      Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "success",
+        title: "Transaksi dihapus",
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+      });
+    },
+    onError: () => {
+      Swal.fire({
+        icon: "error",
+        title: "Oops...",
+        text: "Gagal menghapus transaksi.",
+        confirmButtonColor: "#f43f5e",
+      });
+    },
+  });
+
   // Load Transactions & SWR Logic
   const { data: transactions = [], isLoading: isLoadingTransactions } = useQuery<Transaction[]>({
     queryKey: ["transactions"],
@@ -167,7 +218,8 @@ export default function DashboardPage() {
         }
         throw new Error("Failed to fetch transactions");
       }
-      return res.json();
+      const json = await res.json();
+      return json.data || [];
     },
   });
 
@@ -249,6 +301,38 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Budget Progress */}
+      {summary.BUDGETS && summary.BUDGETS.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <p className="section-title">Limit Anggaran Bulanan</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+            {summary.BUDGETS.map((b) => {
+              const p = Math.min(b.percentage, 100);
+              const isOver = b.percentage >= 100;
+              const color = p < 75 ? "#10b981" : p < 90 ? "#f59e0b" : "#f43f5e";
+              return (
+                <div key={b.categoryId} className="card" style={{ padding: "16px 20px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
+                     <span style={{ fontWeight: 700, color: "#0f172a" }}>{b.categoryName}</span>
+                     <span style={{ fontSize: 12, fontWeight: 800, color, background: `${color}15`, padding: "4px 8px", borderRadius: 6 }}>
+                        {isOver ? "Melebihi Batas!" : `${b.percentage.toFixed(0)}% Digunakan`}
+                     </span>
+                  </div>
+                  {/* Progress Bar Container */}
+                  <div style={{ height: 10, background: "#f1f5f9", borderRadius: 5, overflow: "hidden" }}>
+                     <div style={{ height: "100%", width: `${p}%`, background: color, transition: "all 0.5s ease" }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+                     <span style={{ fontSize: 13, color: "#64748b" }}>Rp {b.spent.toLocaleString("id-ID")}</span>
+                     <span style={{ fontSize: 13, color: "#94a3b8", fontWeight: 600 }}>Batas: Rp {b.budget.toLocaleString("id-ID")}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Form */}
       <AddTransactionForm />
 
@@ -269,7 +353,7 @@ export default function DashboardPage() {
           ) : (
             transactions.map((t: Transaction) => (
               <div key={t.id} className="transaction-item">
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div className="transaction-item-left">
                   <div className={`icon-circle ${t.type === "EXPENSE" ? "icon-circle-expense" : "icon-circle-income"}`}>
                     {t.type === "EXPENSE" ? (
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
@@ -277,20 +361,47 @@ export default function DashboardPage() {
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
                     )}
                   </div>
-                  <div>
-                    <p style={{ fontWeight: 600, fontSize: 15, color: "#0f172a" }}>{t.description || "Tanpa Deskripsi"}</p>
+                  <div className="transaction-item-text">
+                    <p className="transaction-item-desc">
+                      {t.description || "Tanpa Deskripsi"}
+                    </p>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                       <span className={`badge ${t.type === "EXPENSE" ? "badge-expense" : "badge-income"}`}>{t.category?.name || "Umum"}</span>
-                      <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#cbd5e1" }}></span>
-                      <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>
+                      <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#cbd5e1", flexShrink: 0 }}></span>
+                      <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500, flexShrink: 0 }}>
                         {new Date(t.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
                       </span>
                     </div>
                   </div>
                 </div>
-                <p style={{ fontWeight: 800, fontSize: 16, color: t.type === "EXPENSE" ? "#f43f5e" : "#10b981", letterSpacing: "-0.3px" }}>
-                  {t.type === "EXPENSE" ? "−" : "+"} Rp {t.amount.toLocaleString("id-ID")}
-                </p>
+                <div className="transaction-item-right">
+                  <p style={{ fontWeight: 800, fontSize: 16, color: t.type === "EXPENSE" ? "#f43f5e" : "#10b981", letterSpacing: "-0.3px", margin: 0 }}>
+                    {t.type === "EXPENSE" ? "−" : "+"} Rp {t.amount.toLocaleString("id-ID")}
+                  </p>
+                  <button
+                    onClick={() => {
+                      Swal.fire({
+                        title: "Yakin Hapus?",
+                        text: "Riwayat transaksi ini tidak dapat dikembalikan semula!",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonColor: "#f43f5e",
+                        cancelButtonColor: "#94a3b8",
+                        confirmButtonText: "Hapus",
+                        cancelButtonText: "Batal",
+                      }).then((result) => {
+                        if (result.isConfirmed) {
+                          deleteMutation.mutate(t.id);
+                        }
+                      });
+                    }}
+                    style={{ background: "transparent", border: "none", padding: 4, cursor: "pointer", color: "#cbd5e1", transition: "color 0.2s" }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = "#f43f5e"}
+                    onMouseLeave={(e) => e.currentTarget.style.color = "#cbd5e1"}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
+                </div>
               </div>
             ))
           )}
