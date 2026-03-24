@@ -156,10 +156,12 @@ Jika tidak ada yang cocok atau list kosong, biarkan categoryId null.`;
           if (firstCategory) categoryId = firstCategory.id;
         }
 
-        // Jika dia masih belum punya kategori
+        // Jika dia masih belum punya kategori sama sekali, gunakan upsert
         if (!categoryId) {
-          const defaultCategory = await this.prisma.category.create({
-            data: {
+          const defaultCategory = await this.prisma.category.upsert({
+            where: { name_userId: { name: 'Umum (Bot)', userId: user.id } },
+            update: {},
+            create: {
               name: 'Umum (Bot)',
               type: 'EXPENSE',
               userId: user.id
@@ -258,8 +260,11 @@ Jika tidak ada yang cocok atau list kosong, biarkan categoryId null.`;
           if (fallbackCat) {
             categoryId = fallbackCat.id;
           } else {
-            const newCat = await this.prisma.category.create({
-              data: { name: 'Umum (Bot)', type: parsed.type === 'INCOME' ? 'INCOME' : 'EXPENSE', userId: user.id },
+            const catName = parsed.type === 'INCOME' ? 'Umum Pemasukan (Bot)' : 'Umum (Bot)';
+            const newCat = await this.prisma.category.upsert({
+              where: { name_userId: { name: catName, userId: user.id } },
+              update: {},
+              create: { name: catName, type: parsed.type === 'INCOME' ? 'INCOME' : 'EXPENSE', userId: user.id },
             });
             categoryId = newCat.id;
           }
