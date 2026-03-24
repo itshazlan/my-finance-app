@@ -53,55 +53,47 @@ export class TelegramService implements OnModuleInit {
 
     this.bot.start((ctx) => {
       ctx.reply(
-        `👋 Selamat datang di *FinanceTracker Bot*! 💸
+        `👋 Selamat datang di *FinanceTracker Bot!* 💸\n\nBot ini membantu kamu mencatat keuangan langsung dari Telegram - tanpa perlu buka aplikasi.\n\n*Langkah pertama:*\nHubungkan akun kamu dengan perintah:\n/link email@kamu.com\n\nKetik /help untuk melihat semua fitur yang tersedia.`,
+        { parse_mode: 'Markdown' }
+      );
+    });
 
-        Bot ini membantu kamu mencatat keuangan langsung dari Telegram — tanpa perlu buka aplikasi.
-
-        *Langkah pertama:*
-        Hubungkan akun kamu dengan perintah:
-        /link email@kamu\.com
-
-        Ketik /help untuk melihat semua fitur yang tersedia.`,
-                { parse_mode: 'MarkdownV2' }
-              );
-            });
-
-            this.bot.command('help', (ctx) => {
-              ctx.reply(
+    this.bot.command('help', (ctx) => {
+      ctx.reply(
         `📖 *Panduan Penggunaan FinanceTracker Bot*
 
         ━━━━━━━━━━━━━━━━━━━
         🔗 *Menghubungkan Akun*
-        /link email@kamu\.com
-        → Wajib dilakukan sekali sebelum fitur lain bisa digunakan\.
+        \` /link email@kamu.com\`
+        Wajib dilakukan sekali sebelum fitur lain bisa digunakan.
 
         ━━━━━━━━━━━━━━━━━━━
         💬 *Catat Transaksi via Teks*
         Cukup kirim pesan biasa, contoh:
         • \`Mie instan 10000\`
-        • \`Alfamart \- Susu \- 15rb\`
+        • \`Alfamart - Susu - 15rb\`
         • \`Beli pulsa 50k\`
-        • \`Gajian masuk 5jt\` ← otomatis tercatat sebagai *Pemasukan*
+        • \`Gajian masuk 5jt\` - otomatis tercatat sebagai Pemasukan
 
         *Tips nominal yang dikenali:*
-        10000 · 10rb · 10k · 50ribu · 1jt · 1\.5jt
+        10000, 10rb, 10k, 50ribu, 1jt, 1.5jt
 
         ━━━━━━━━━━━━━━━━━━━
         🧾 *Catat Transaksi via Foto Struk*
-        Kirim foto/gambar struk belanja → AI akan membaca dan mencatat otomatis\.
+        Kirim foto/gambar struk belanja, AI akan membaca dan mencatat otomatis.
 
         ━━━━━━━━━━━━━━━━━━━
         📊 *Ringkasan Keuangan*
-        /rekap
-        → Tampilkan pemasukan, pengeluaran & saldo bulan ini\.
+        \` /rekap\`
+        Tampilkan pemasukan, pengeluaran & saldo bulan ini.
 
         ━━━━━━━━━━━━━━━━━━━
         📅 *Notifikasi Otomatis*
-        Setiap tanggal 1, bot akan mengirim rekap bulan lalu secara otomatis\.
+        Setiap tanggal 1, bot akan mengirim rekap bulan lalu secara otomatis.
 
         ━━━━━━━━━━━━━━━━━━━
-        ❓ Pertanyaan? Cek dashboard: https://my\-finance\-app\-web\.vercel\.app`,
-        { parse_mode: 'MarkdownV2' }
+        Pertanyaan? Cek dashboard: https://my-finance-app-web.vercel.app`,
+        { parse_mode: 'Markdown' }
       );
     });
 
@@ -171,13 +163,13 @@ export class TelegramService implements OnModuleInit {
           .join('\n');
 
         const prompt = `Aku memberikan sebuah foto struk belanja / transaksi.
-Tolong ekstrak informasi berikut dan kembalikan HANYA dalam format JSON valid tanpa format markdown \`\`\`:
-1. "amount": total akhir transaksi (angka integer murni tanpa titik atau huruf, contoh: 50000).
-2. "description": rangkuman tempat belanja dan isi item (contoh: "Alfamart - Susu, Roti, Kopi").
-3. "date": tanggal transaksi (format ISO 8601). Jika tidak terdeteksi pakai waktu saat ini.
-4. "categoryId": pilih ID kategori yang paling masuk akal dari list berikut untuk transaksi pengeluaran ini:
-${categoriesList}
-Jika tidak ada yang cocok atau list kosong, biarkan categoryId null.`;
+          Tolong ekstrak informasi berikut dan kembalikan HANYA dalam format JSON valid tanpa format markdown \`\`\`:
+          1. "amount": total akhir transaksi (angka integer murni tanpa titik atau huruf, contoh: 50000).
+          2. "description": rangkuman tempat belanja dan isi item (contoh: "Alfamart - Susu, Roti, Kopi").
+          3. "date": tanggal transaksi (format ISO 8601). Jika tidak terdeteksi pakai waktu saat ini.
+          4. "categoryId": pilih ID kategori yang paling masuk akal dari list berikut untuk transaksi pengeluaran ini:
+          ${categoriesList}
+          Jika tidak ada yang cocok atau list kosong, biarkan categoryId null.`;
 
         const response = await this.genAI.models.generateContent({
           model: "gemini-2.5-flash",
