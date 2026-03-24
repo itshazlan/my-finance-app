@@ -43,8 +43,66 @@ export class TelegramService implements OnModuleInit {
   }
 
   private setupBot() {
+    // Daftarkan daftar perintah ke menu Telegram
+    this.bot.telegram.setMyCommands([
+      { command: 'start',  description: 'Mulai & tampilkan selamat datang' },
+      { command: 'link',   description: 'Hubungkan akun: /link email@kamu.com' },
+      { command: 'rekap',  description: 'Lihat ringkasan keuangan bulan ini' },
+      { command: 'help',   description: 'Tampilkan panduan penggunaan bot' },
+    ]);
+
     this.bot.start((ctx) => {
-      ctx.reply(`Halo! Selamat datang di Bot Personal Finance Tracker. 💸\nUntuk mulai menggunakan bot ini, jalankan perintah:\n/link <email_kamu>\nContoh: /link budi@gmail.com`);
+      ctx.reply(
+        `👋 Selamat datang di *FinanceTracker Bot*! 💸
+
+        Bot ini membantu kamu mencatat keuangan langsung dari Telegram — tanpa perlu buka aplikasi.
+
+        *Langkah pertama:*
+        Hubungkan akun kamu dengan perintah:
+        /link email@kamu\.com
+
+        Ketik /help untuk melihat semua fitur yang tersedia.`,
+                { parse_mode: 'MarkdownV2' }
+              );
+            });
+
+            this.bot.command('help', (ctx) => {
+              ctx.reply(
+        `📖 *Panduan Penggunaan FinanceTracker Bot*
+
+        ━━━━━━━━━━━━━━━━━━━
+        🔗 *Menghubungkan Akun*
+        /link email@kamu\.com
+        → Wajib dilakukan sekali sebelum fitur lain bisa digunakan\.
+
+        ━━━━━━━━━━━━━━━━━━━
+        💬 *Catat Transaksi via Teks*
+        Cukup kirim pesan biasa, contoh:
+        • \`Mie instan 10000\`
+        • \`Alfamart \- Susu \- 15rb\`
+        • \`Beli pulsa 50k\`
+        • \`Gajian masuk 5jt\` ← otomatis tercatat sebagai *Pemasukan*
+
+        *Tips nominal yang dikenali:*
+        10000 · 10rb · 10k · 50ribu · 1jt · 1\.5jt
+
+        ━━━━━━━━━━━━━━━━━━━
+        🧾 *Catat Transaksi via Foto Struk*
+        Kirim foto/gambar struk belanja → AI akan membaca dan mencatat otomatis\.
+
+        ━━━━━━━━━━━━━━━━━━━
+        📊 *Ringkasan Keuangan*
+        /rekap
+        → Tampilkan pemasukan, pengeluaran & saldo bulan ini\.
+
+        ━━━━━━━━━━━━━━━━━━━
+        📅 *Notifikasi Otomatis*
+        Setiap tanggal 1, bot akan mengirim rekap bulan lalu secara otomatis\.
+
+        ━━━━━━━━━━━━━━━━━━━
+        ❓ Pertanyaan? Cek dashboard: https://my\-finance\-app\-web\.vercel\.app`,
+        { parse_mode: 'MarkdownV2' }
+      );
     });
 
     this.bot.command('link', async (ctx) => {
