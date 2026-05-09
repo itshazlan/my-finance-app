@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { Telegraf } from 'telegraf';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { GoogleGenAI } from '@google/genai';
