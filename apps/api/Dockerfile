@@ -39,7 +39,7 @@ USER nestjs
 # Copy the isolated production deployment of the API
 COPY --from=builder --chown=nestjs:nodejs /prod/api ./
 
-EXPOSE 3000
+EXPOSE 4000
 
 # Start the NestJS application
 CMD ["node", "dist/main.js"]
