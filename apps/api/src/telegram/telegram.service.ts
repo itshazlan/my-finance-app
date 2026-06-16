@@ -9,6 +9,7 @@ export class TelegramService implements OnModuleInit {
   private bot: Telegraf;
   private logger = new Logger(TelegramService.name);
   private genAI: GoogleGenAI;
+  private groqApiKey: string;
 
   constructor(private readonly prisma: PrismaService) {
     if (process.env.TELEGRAM_BOT_TOKEN) {
@@ -18,6 +19,10 @@ export class TelegramService implements OnModuleInit {
     if (process.env.GEMINI_API_KEY) {
       this.genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     }
+
+    if (process.env.GROQ_API_KEY) {
+      this.groqApiKey = process.env.GROQ_API_KEY;
+    }
   }
 
   onModuleInit() {
@@ -25,8 +30,12 @@ export class TelegramService implements OnModuleInit {
       this.logger.warn('TELEGRAM_BOT_TOKEN is not set. Bot is disabled.');
       return;
     }
-    if (!this.genAI) {
-      this.logger.warn('GEMINI_API_KEY is not set. Image scanning will not work.');
+    if (!this.genAI && !this.groqApiKey) {
+      this.logger.warn('Kedua GEMINI_API_KEY dan GROQ_API_KEY tidak dikonfigurasi. Fitur AI tidak akan bekerja.');
+    } else if (!this.genAI) {
+      this.logger.warn('GEMINI_API_KEY tidak dikonfigurasi. Menggunakan Groq sebagai AI utama.');
+    } else if (!this.groqApiKey) {
+      this.logger.warn('GROQ_API_KEY tidak dikonfigurasi. Fallback AI tidak tersedia jika Gemini limit.');
     }
 
     this.setupBot();
@@ -49,7 +58,9 @@ export class TelegramService implements OnModuleInit {
       { command: 'link',   description: 'Hubungkan akun: /link email@kamu.com' },
       { command: 'rekap',  description: 'Lihat ringkasan keuangan bulan ini' },
       { command: 'help',   description: 'Tampilkan panduan penggunaan bot' },
-    ]);
+    ]).catch(err => {
+      this.logger.error('Failed to set Telegram commands (possibly network timeout)', err);
+    });
 
     this.bot.start((ctx) => {
       ctx.reply(
@@ -129,8 +140,8 @@ export class TelegramService implements OnModuleInit {
     });
 
     this.bot.on('photo', async (ctx) => {
-      if (!this.genAI) {
-        return ctx.reply('Sistem AI belum dikonfigurasi (GEMINI_API_KEY missing).');
+      if (!this.genAI && !this.groqApiKey) {
+        return ctx.reply('Sistem AI belum dikonfigurasi (GEMINI_API_KEY & GROQ_API_KEY missing).');
       }
 
       const chatId = ctx.from.id.toString();
@@ -171,25 +182,11 @@ export class TelegramService implements OnModuleInit {
           ${categoriesList}
           Jika tidak ada yang cocok atau list kosong, biarkan categoryId null.`;
 
-        const response = await this.genAI.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { text: prompt },
-                {
-                  inlineData: {
-                    data: buffer.toString("base64"),
-                    mimeType
-                  }
-                }
-              ]
-            }
-          ]
+        const responseText = await this.generateContentWithFallback(prompt, {
+          data: buffer.toString('base64'),
+          mimeType
         });
 
-        const responseText = response.text || "";
         const cleanedJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
         const data = JSON.parse(cleanedJson);
 
@@ -238,7 +235,7 @@ export class TelegramService implements OnModuleInit {
 
       } catch (error) {
         this.logger.error(error);
-        ctx.telegram.editMessageText(ctx.chat.id, processingMessage.message_id, undefined, 'Terjadi kesalahan saat memproses gambar. Pastikan API key Google Gemini aktif atau format foto struk benar.');
+        ctx.telegram.editMessageText(ctx.chat.id, processingMessage.message_id, undefined, 'Terjadi kesalahan saat memproses gambar dengan AI. Silakan coba kembali beberapa saat lagi.');
       }
     });
 
@@ -248,8 +245,8 @@ export class TelegramService implements OnModuleInit {
       const text = ctx.message.text;
       if (text.startsWith('/')) return;
 
-      if (!this.genAI) {
-        return ctx.reply('⚠️ Fitur input teks belum tersedia (GEMINI_API_KEY belum dikonfigurasi).');
+      if (!this.genAI && !this.groqApiKey) {
+        return ctx.reply('⚠️ Fitur input teks belum tersedia (Sistem AI belum dikonfigurasi).');
       }
 
       const chatId = ctx.from.id.toString();
@@ -285,12 +282,9 @@ export class TelegramService implements OnModuleInit {
           Kembalikan HANYA JSON valid tanpa markdown, contoh:
           {"amount": 50000, "description": "Beli pulsa", "type": "EXPENSE", "categoryId": "abc-123"}`;
 
-        const response = await this.genAI.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        });
+        const responseText = await this.generateContentWithFallback(prompt);
 
-        const raw = (response.text || '').replace(/```json/g, '').replace(/```/g, '').trim();
+        const raw = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(raw);
 
         if (!parsed.amount || parsed.amount <= 0) {
@@ -409,5 +403,106 @@ export class TelegramService implements OnModuleInit {
     } catch (err) {
       this.logger.error(`Gagal mengirim pesan ke user ${user.id}`, err);
     }
+  }
+
+  private async generateContentWithFallback(
+    prompt: string,
+    image?: { data: string; mimeType: string }
+  ): Promise<string> {
+    // 1. Coba Google Gemini jika terkonfigurasi
+    if (this.genAI) {
+      try {
+        this.logger.log('Mengirimkan permintaan ke Google Gemini...');
+        const contents: any[] = [{ role: 'user', parts: [{ text: prompt }] }];
+        if (image) {
+          contents[0].parts.push({
+            inlineData: {
+              data: image.data,
+              mimeType: image.mimeType,
+            },
+          });
+        }
+        const response = await this.genAI.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents,
+        });
+        if (response.text) {
+          return response.text;
+        }
+      } catch (geminiError) {
+        this.logger.error('Google Gemini API error, mencoba fallback ke Groq...', geminiError);
+      }
+    } else {
+      this.logger.warn('Google Gemini API key tidak dikonfigurasi, mencoba Groq...');
+    }
+
+    // 2. Coba Groq jika terkonfigurasi
+    if (this.groqApiKey) {
+      try {
+        this.logger.log('Mengirimkan permintaan ke Groq API...');
+        return await this.callGroqAPI(prompt, image);
+      } catch (groqError) {
+        this.logger.error('Groq API error...', groqError);
+        throw new Error('Kedua provider AI (Gemini & Groq) gagal memproses permintaan.');
+      }
+    }
+
+    throw new Error('Tidak ada API key AI (Gemini atau Groq) yang dikonfigurasi.');
+  }
+
+  private async callGroqAPI(
+    prompt: string,
+    image?: { data: string; mimeType: string }
+  ): Promise<string> {
+    const model = image ? 'llama-3.2-11b-vision-preview' : 'llama-3.3-70b-versatile';
+    const messages: any[] = [];
+
+    if (!image) {
+      messages.push({
+        role: 'user',
+        content: prompt,
+      });
+    } else {
+      messages.push({
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: prompt,
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:${image.mimeType};base64,${image.data}`,
+            },
+          },
+        ],
+      });
+    }
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.groqApiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Groq API error (status ${response.status}): ${errorText}`);
+    }
+
+    const result = await response.json() as any;
+    const content = result?.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error('Groq API tidak mengembalikan konten jawaban.');
+    }
+    return content;
   }
 }
